@@ -3,6 +3,7 @@ package com.github.libretube.ui.fragments
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Dialog
+import android.app.PictureInPictureParams
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.media.session.PlaybackState
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -57,7 +59,6 @@ import com.github.libretube.api.obj.Segment
 import com.github.libretube.api.obj.Streams
 import com.github.libretube.api.obj.Subtitle
 import com.github.libretube.compat.PictureInPictureCompat
-import com.github.libretube.compat.PictureInPictureParamsCompat
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.FragmentPlayerBinding
 import com.github.libretube.db.DatabaseHolder
@@ -69,6 +70,7 @@ import com.github.libretube.extensions.anyChildFocused
 import com.github.libretube.extensions.formatShort
 import com.github.libretube.extensions.parcelable
 import com.github.libretube.extensions.serializableExtra
+import com.github.libretube.extensions.setAspectRatio
 import com.github.libretube.extensions.toID
 import com.github.libretube.extensions.togglePlayPauseState
 import com.github.libretube.extensions.updateIfChanged
@@ -117,7 +119,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.ceil
-
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
@@ -237,11 +238,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (PlayerHelper.pipEnabled || PictureInPictureCompat.isInPictureInPictureMode(
-                    mainActivity
-                )
-            ) {
-                PictureInPictureCompat.setPictureInPictureParams(requireActivity(), pipParams)
+            if (PlayerHelper.pipEnabled || mainActivity.isInPictureInPictureMode) {
+                requireActivity().setPictureInPictureParams(pipParams)
             }
 
             if (isPlaying && PlayerHelper.sponsorBlockEnabled) {
@@ -289,7 +287,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
             // listen for the stop button in the notification
             if (playbackState == PlaybackState.STATE_STOPPED && PlayerHelper.pipEnabled &&
-                PictureInPictureCompat.isInPictureInPictureMode(requireActivity())
+                requireActivity().isInPictureInPictureMode
             ) {
                 // finish PiP by finishing the activity
                 activity?.finish()
@@ -655,9 +653,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
         binding.playerMotionLayout.progress = 1F
         binding.playerMotionLayout.transitionToStart()
 
-        val activity = requireActivity()
         if (PlayerHelper.pipEnabled) {
-            PictureInPictureCompat.setPictureInPictureParams(activity, pipParams)
+            requireActivity().setPictureInPictureParams(pipParams)
         }
     }
 
@@ -750,7 +747,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
             PictureInPictureCompat.isPictureInPictureAvailable(requireContext())
 
         binding.relPlayerPip.setOnClickListener {
-            PictureInPictureCompat.enterPictureInPictureMode(requireActivity(), pipParams)
+            requireActivity().enterPictureInPictureMode(pipParams)
             isEnteringPiPMode = true
         }
 
@@ -1011,8 +1008,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
         if (PlayerHelper.pipEnabled) {
             // disable the auto PiP mode for SDK >= 32
-            PictureInPictureCompat
-                .setPictureInPictureParams(requireActivity(), pipParams)
+            requireActivity().setPictureInPictureParams(pipParams)
         }
 
         runCatching {
@@ -1172,8 +1168,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
         if (binding.playerMotionLayout.progress != 1.0f) {
             // show controllers when not in picture in picture mode
-            val inPipMode = PlayerHelper.pipEnabled &&
-                    PictureInPictureCompat.isInPictureInPictureMode(requireActivity())
+            val inPipMode = PlayerHelper.pipEnabled && requireActivity().isInPictureInPictureMode
             if (!inPipMode) {
                 binding.player.useController = true
             }
@@ -1511,25 +1506,22 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
     fun onUserLeaveHint() {
         if (shouldStartPiP()) {
-            PictureInPictureCompat.enterPictureInPictureMode(requireActivity(), pipParams)
+            requireActivity().enterPictureInPictureMode(pipParams)
         } else if (PlayerHelper.pauseOnQuit) {
             playerController.pause()
         }
     }
 
-    private val pipParams: PictureInPictureParamsCompat
+    private val pipParams: PictureInPictureParams
         get() = run {
             val isPlaying = ::playerController.isInitialized && playerController.isPlaying
 
-            PictureInPictureParamsCompat.Builder()
-                .setActions(
-                    PlayerHelper.getPiPModeActions(
-                        requireActivity(),
-                        isPlaying
-                    )
-                )
-                .setAutoEnterEnabled(PlayerHelper.pipEnabled && isPlaying)
+            PictureInPictureParams.Builder()
+                .setActions(PlayerHelper.getPiPModeActions(requireActivity(), isPlaying))
                 .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setAutoEnterEnabled(PlayerHelper.pipEnabled && isPlaying)
+                    }
                     if (isPlaying) {
                         setAspectRatio(playerController.videoSize)
                     }
@@ -1584,7 +1576,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
 
         if (_binding == null ||
             // If in PiP mode, orientation is given as landscape.
-            PictureInPictureCompat.isInPictureInPictureMode(requireActivity())
+            requireActivity().isInPictureInPictureMode
         ) {
             return
         }

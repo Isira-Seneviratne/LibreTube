@@ -454,7 +454,7 @@ class MainActivity : BaseActivity() {
 
     private fun loadIntentData() {
         // If activity is running in PiP mode, then start it in front.
-        if (PictureInPictureCompat.isInPictureInPictureMode(this)) {
+        if (isInPictureInPictureMode) {
             val nIntent = Intent(this, MainActivity::class.java)
             nIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(nIntent)

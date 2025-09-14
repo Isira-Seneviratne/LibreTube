@@ -1,9 +1,11 @@
 package com.github.libretube.helpers
 
 import android.app.Activity
+import android.app.RemoteAction
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Looper
 import android.util.Base64
@@ -11,7 +13,6 @@ import android.view.accessibility.CaptioningManager
 import androidx.annotation.OptIn
 import androidx.annotation.StringRes
 import androidx.core.app.PendingIntentCompat
-import androidx.core.app.RemoteActionCompat
 import androidx.core.content.getSystemService
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.net.toUri
@@ -453,7 +454,7 @@ object PlayerHelper {
         id: Int,
         @StringRes title: Int,
         event: PlayerEvent
-    ): RemoteActionCompat {
+    ): RemoteAction {
         val intent = Intent(getIntentActionName(activity))
             .setPackage(activity.packageName)
             .putExtra(CONTROL_TYPE, event)
@@ -461,15 +462,15 @@ object PlayerHelper {
             PendingIntentCompat.getBroadcast(activity, event.ordinal, intent, 0, false)!!
 
         val text = activity.getString(title)
-        val icon = IconCompat.createWithResource(activity, id)
+        val icon = Icon.createWithResource(activity, id)
 
-        return RemoteActionCompat(icon, text, text, pendingIntent)
+        return RemoteAction(icon, text, text, pendingIntent)
     }
 
     /**
      * Create controls to use in the PiP window
      */
-    fun getPiPModeActions(activity: Activity, isPlaying: Boolean): List<RemoteActionCompat> {
+    fun getPiPModeActions(activity: Activity, isPlaying: Boolean): List<RemoteAction> {
         val audioModeAction = getRemoteAction(
             activity,
             R.drawable.ic_headphones,

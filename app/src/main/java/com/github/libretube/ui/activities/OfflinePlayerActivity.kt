@@ -1,10 +1,12 @@
 package com.github.libretube.ui.activities
 
+import android.app.PictureInPictureParams
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.KeyEvent
@@ -18,8 +20,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.ui.PlayerView
-import com.github.libretube.compat.PictureInPictureCompat
-import com.github.libretube.compat.PictureInPictureParamsCompat
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.ActivityOfflinePlayerBinding
 import com.github.libretube.databinding.ExoStyledPlayerControlViewBinding
@@ -29,6 +29,7 @@ import com.github.libretube.enums.FileType
 import com.github.libretube.enums.PlayerCommand
 import com.github.libretube.enums.PlayerEvent
 import com.github.libretube.extensions.serializableExtra
+import com.github.libretube.extensions.setAspectRatio
 import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.WindowHelper
@@ -80,10 +81,7 @@ class OfflinePlayerActivity : BaseActivity() {
             )
 
             if (PlayerHelper.pipEnabled) {
-                PictureInPictureCompat.setPictureInPictureParams(
-                    this@OfflinePlayerActivity,
-                    pipParams
-                )
+                setPictureInPictureParams(pipParams)
             }
         }
 
@@ -126,10 +124,12 @@ class OfflinePlayerActivity : BaseActivity() {
         get() = run {
             val isPlaying = ::playerController.isInitialized && playerController.isPlaying
 
-            PictureInPictureParamsCompat.Builder()
+            PictureInPictureParams.Builder()
                 .setActions(PlayerHelper.getPiPModeActions(this, isPlaying))
-                .setAutoEnterEnabled(PlayerHelper.pipEnabled && isPlaying)
                 .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setAutoEnterEnabled(PlayerHelper.pipEnabled && isPlaying)
+                    }
                     if (isPlaying) {
                         setAspectRatio(playerController.videoSize)
                     }
@@ -166,7 +166,7 @@ class OfflinePlayerActivity : BaseActivity() {
         )
 
         if (PlayerHelper.pipEnabled) {
-            PictureInPictureCompat.setPictureInPictureParams(this, pipParams)
+            setPictureInPictureParams(pipParams)
         }
     }
 
@@ -249,7 +249,7 @@ class OfflinePlayerActivity : BaseActivity() {
 
     override fun onUserLeaveHint() {
         if (PlayerHelper.pipEnabled && playerController.isPlaying) {
-            PictureInPictureCompat.enterPictureInPictureMode(this, pipParams)
+            enterPictureInPictureMode(pipParams)
         }
 
         super.onUserLeaveHint()
